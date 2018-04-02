@@ -47,6 +47,8 @@ test_name = options.test_name
 input_filename = 'fiotest.tmp'
 readonly = []
 stat_label = 'read'
+clat_key = 'clat_ns'
+
 
 if re.search('write', test_name):
     stat_label = 'write'
@@ -117,10 +119,10 @@ iopses = [0.]
 
 for job in results['jobs']:
     concurrency = int(job['jobname'])
-    latency = float(job[stat_label]['clat']['mean'])
-    latency_05 = float(job[stat_label]['clat']['percentile']['5.000000'])
-    latency_95 = float(job[stat_label]['clat']['percentile']['95.000000'])
-    latency_stddev = float(job[stat_label]['clat']['stddev'])
+    latency = float(job[stat_label][clat_key]['mean'])
+    latency_05 = float(job[stat_label][clat_key]['percentile']['5.000000'])
+    latency_95 = float(job[stat_label][clat_key]['percentile']['95.000000'])
+    latency_stddev = float(job[stat_label][clat_key]['stddev'])
     iops = float(job[stat_label]['iops'])
     concurrencies.append(concurrency)
     latencies.append(latency)
