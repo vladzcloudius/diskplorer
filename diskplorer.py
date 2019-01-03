@@ -143,7 +143,7 @@ for tl in ax1.get_yticklabels():
 ax2 = ax1.twinx()
 #ax2.plot(concurrencies, latencies, 'r-+')
 ax2.errorbar(concurrencies, latencies, yerr=[latencies_05, latencies_95], color='r')
-ax2.set_ylabel(u'average latency (us)', color='r')
+ax2.set_ylabel(u'average latency (ns)', color='r')
 for tl in ax2.get_yticklabels():
     tl.set_color('r')
 
