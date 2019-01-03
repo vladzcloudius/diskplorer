@@ -117,10 +117,10 @@ iopses = [0.]
 
 for job in results['jobs']:
     concurrency = int(job['jobname'])
-    latency = float(job[stat_label]['clat']['mean'])
-    latency_05 = float(job[stat_label]['clat']['percentile']['5.000000'])
-    latency_95 = float(job[stat_label]['clat']['percentile']['95.000000'])
-    latency_stddev = float(job[stat_label]['clat']['stddev'])
+    latency = float(job[stat_label]['clat_ns']['mean'])
+    latency_05 = float(job[stat_label]['clat_ns']['percentile']['5.000000'])
+    latency_95 = float(job[stat_label]['clat_ns']['percentile']['95.000000'])
+    latency_stddev = float(job[stat_label]['clat_ns']['stddev'])
     iops = float(job[stat_label]['iops'])
     concurrencies.append(concurrency)
     latencies.append(latency)
@@ -147,7 +147,7 @@ ax2.set_ylabel(u'average latency (us)', color='r')
 for tl in ax2.get_yticklabels():
     tl.set_color('r')
 
-plt.savefig(filename=output_filename)
+plt.savefig(fname=output_filename)
 
 with open(raw_filename, 'w') as raw:
     print('buffersize,concurrency,iops,lat_avg,lat_05,lat_95', file=raw)
