@@ -5,15 +5,10 @@ from __future__ import print_function
 import os
 import json
 import subprocess
-import matplotlib
 import math
 import optparse
 import multiprocessing
 import re
-
-matplotlib.use('svg')  # must come before pyplot import
-
-import matplotlib.pyplot as plt
 
 optparser = optparse.OptionParser()
 
@@ -29,8 +24,8 @@ optparser.add_option('--buffer-size', dest='buffer_size', default='4k',
                      help='Set SIZE as I/O buffer size for test (ex. 4k, 1M)', metavar='SIZE')
 optparser.add_option('-m', '--max-concurrency', dest='maxdepth', default=128, type='int',
                      help='Test maximum concurrency level N', metavar='N')
-optparser.add_option('-o', '--output', dest='output_filename', default='disk-concurrency-response.svg',
-                     help='Write output graph to FILE', metavar='FILE')
+optparser.add_option('-o', '--output', dest='output_filename', default='disk-concurrency-response.json',
+                     help='Write output JSON to FILE', metavar='FILE')
 optparser.add_option('--raw-results', dest='raw_results_filename',
                      metavar='FILE', default='disk-concurrency-response.csv',
                      help='Write raw results (.csv) to FILE')
@@ -103,7 +98,7 @@ def run_job():
     create_fio_spec(spec_fname)
     result_json = subprocess.check_output(['fio', '--output-format=json'] + readonly + [spec_fname])
     result_json = result_json.decode('utf-8')
-    open('tmp.fio.json', 'w').write(result_json)
+    open(output_filename, 'w').write(result_json)
     return json.loads(result_json)
 
 
@@ -127,27 +122,6 @@ for job in results['jobs']:
     latencies_05.append(latency_05)
     latencies_95.append(latency_95)
     iopses.append(iops)
-
-def fix_y_axis(plt):
-    plt.ylim(0.0, plt.ylim()[1])
-
-fig, ax1 = plt.subplots()
-ax1.plot(concurrencies, iopses, 'b-+')
-ax1.set_xlabel('concurrency')
-# Make the y-axis label and tick labels match the line color.
-ax1.set_ylabel('{buffer_size} {stat_label} iops'.format(**globals()), color='b')
-for tl in ax1.get_yticklabels():
-    tl.set_color('b')
-# FIXME: want log scale on X axis
-
-ax2 = ax1.twinx()
-#ax2.plot(concurrencies, latencies, 'r-+')
-ax2.errorbar(concurrencies, latencies, yerr=[latencies_05, latencies_95], color='r')
-ax2.set_ylabel(u'average latency (ns)', color='r')
-for tl in ax2.get_yticklabels():
-    tl.set_color('r')
-
-plt.savefig(fname=output_filename)
 
 with open(raw_filename, 'w') as raw:
     print('buffersize,concurrency,iops,lat_avg,lat_05,lat_95', file=raw)
