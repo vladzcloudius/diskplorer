@@ -147,6 +147,7 @@ ax2.set_ylabel(u'average latency (ns)', color='r')
 for tl in ax2.get_yticklabels():
     tl.set_color('r')
 
+plt.tight_layout()
 plt.savefig(fname=output_filename)
 
 with open(raw_filename, 'w') as raw:
