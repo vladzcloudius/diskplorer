@@ -31,6 +31,9 @@ optparser.add_option('-m', '--max-concurrency', dest='maxdepth', default=128, ty
                      help='Test maximum concurrency level N', metavar='N')
 optparser.add_option('-o', '--output-prefix', dest='output_filename_prefix', default='disk-concurrency-response',
                      help='Write output graph and csv to FILE prefixed with this', metavar='FILE')
+optparser.add_option('-f','--file', dest='fio_json',
+                     metavar='FILE',
+                     help='Input file with fio results for processing')
 
 (options, args) = optparser.parse_args()
 
@@ -104,8 +107,13 @@ def run_job():
     open(json_filename, 'w').write(result_json)
     return json.loads(result_json)
 
+results = ""
 
-results = run_job()
+if options.fio_json:
+  with open(options.fio_json,"r") as json_file:
+    results = json.load(json_file)
+else:
+  results = run_job()
 
 concurrencies = [0]  # FIXME: fake 0 element to force axis limit
 latencies = [0.]
