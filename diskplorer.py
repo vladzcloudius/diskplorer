@@ -29,11 +29,8 @@ optparser.add_option('--buffer-size', dest='buffer_size', default='4k',
                      help='Set SIZE as I/O buffer size for test (ex. 4k, 1M)', metavar='SIZE')
 optparser.add_option('-m', '--max-concurrency', dest='maxdepth', default=128, type='int',
                      help='Test maximum concurrency level N', metavar='N')
-optparser.add_option('-o', '--output', dest='output_filename', default='disk-concurrency-response.svg',
-                     help='Write output graph to FILE', metavar='FILE')
-optparser.add_option('--raw-results', dest='raw_results_filename',
-                     metavar='FILE', default='disk-concurrency-response.csv',
-                     help='Write raw results (.csv) to FILE')
+optparser.add_option('-o', '--output-prefix', dest='output_filename_prefix', default='disk-concurrency-response',
+                     help='Write output graph and csv to FILE prefixed with this', metavar='FILE')
 
 (options, args) = optparser.parse_args()
 
@@ -41,10 +38,11 @@ mountpoint = options.mountpoint
 filesize = options.filesize
 maxdepth = options.maxdepth
 buffer_size = options.buffer_size
-output_filename = options.output_filename
-raw_filename = options.raw_results_filename
 test_name = options.test_name
-input_filename = 'fiotest.tmp'
+output_filename = options.output_filename_prefix+"-{buffer_size}-{test_name}.svg".format(buffer_size=buffer_size,test_name=test_name)
+raw_filename = options.output_filename_prefix+"-{buffer_size}-{test_name}.csv".format(buffer_size=buffer_size,test_name=test_name)
+json_filename = options.output_filename_prefix+'-{buffer_size}-{test_name}.fio.json'.format(buffer_size=buffer_size,test_name=test_name)
+fio_input_filename = options.output_filename_prefix+'-fiotest.tmp'
 readonly = []
 stat_label = 'read'
 
@@ -52,7 +50,7 @@ if re.search('write', test_name):
     stat_label = 'write'
 
 if options.device:
-    input_filename = options.device
+    fio_input_filename = options.device
     readonly = ['--readonly']
     mountpoint = '/'
 
@@ -65,7 +63,7 @@ bs={buffer_size}
 size={filesize}
 directory={mountpoint}
 runtime=10s
-filename={input_filename}
+filename={fio_input_filename}
 group_reporting=1
 
 '''
@@ -103,7 +101,7 @@ def run_job():
     create_fio_spec(spec_fname)
     result_json = subprocess.check_output(['fio', '--output-format=json'] + readonly + [spec_fname])
     result_json = result_json.decode('utf-8')
-    open('tmp.fio.json', 'w').write(result_json)
+    open(json_filename, 'w').write(result_json)
     return json.loads(result_json)
 
 
