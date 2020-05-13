@@ -119,6 +119,9 @@ concurrencies = [0]  # FIXME: fake 0 element to force axis limit
 latencies = [0.]
 latencies_05 = [0.]
 latencies_95 = [0.]
+latencies_99 = [0.]
+latencies_9999 = [0.]
+latencies_max = [0.]
 iopses = [0.]
 
 for job in results['jobs']:
@@ -126,12 +129,18 @@ for job in results['jobs']:
     latency = float(job[stat_label]['clat_ns']['mean'])
     latency_05 = float(job[stat_label]['clat_ns']['percentile']['5.000000'])
     latency_95 = float(job[stat_label]['clat_ns']['percentile']['95.000000'])
+    latency_99 = float(job[stat_label]['clat_ns']['percentile']['99.000000'])
+    latency_9999 = float(job[stat_label]['clat_ns']['percentile']['99.990000'])
+    latency_max = float(job[stat_label]['clat_ns']['max'])
     latency_stddev = float(job[stat_label]['clat_ns']['stddev'])
     iops = float(job[stat_label]['iops'])
     concurrencies.append(concurrency)
-    latencies.append(latency)
-    latencies_05.append(latency_05)
-    latencies_95.append(latency_95)
+    latencies.append(latency/1000)
+    latencies_05.append(latency_05/1000)
+    latencies_95.append(latency_95/1000)
+    latencies_99.append(latency_99/1000)
+    latencies_9999.append(latency_9999/1000)
+    latencies_max.append(latency_max/1000)
     iopses.append(iops)
 
 def fix_y_axis(plt):
@@ -148,8 +157,9 @@ for tl in ax1.get_yticklabels():
 
 ax2 = ax1.twinx()
 #ax2.plot(concurrencies, latencies, 'r-+')
-ax2.errorbar(concurrencies, latencies, yerr=[latencies_05, latencies_95], color='r')
-ax2.set_ylabel(u'average latency (ns)', color='r')
+ax2.errorbar(concurrencies, latencies, yerr=[latencies_05, latencies_99], color='r')
+ax2.scatter(concurrencies, latencies_95, c='g')
+ax2.set_ylabel(u'average latency (us)\n(green dots 95p, top is 99p)', color='r')
 for tl in ax2.get_yticklabels():
     tl.set_color('r')
 
@@ -157,8 +167,8 @@ plt.tight_layout()
 plt.savefig(fname=output_filename)
 
 with open(raw_filename, 'w') as raw:
-    print('buffersize,concurrency,iops,lat_avg,lat_05,lat_95', file=raw)
-    for concurrency, iops, lat_avg, lat_05, lat_95 in zip(
-            concurrencies, iopses, latencies, latencies_05, latencies_95):
-        print('{buffer_size},{concurrency},{iops},{lat_avg},{lat_05},{lat_95}'
+    print('buffersize,concurrency,iops,lat_avg(us),lat_05(us),lat_95(us),lat_99(us),lat_9999(us),lat_max(us)', file=raw)
+    for concurrency, iops, lat_avg, lat_05, lat_95, lat_99,lat_9999,lat_max in zip(
+            concurrencies, iopses, latencies, latencies_05, latencies_95, latencies_99, latencies_9999, latencies_max):
+        print('{buffer_size},{concurrency},{iops},{lat_avg},{lat_05},{lat_95},{lat_99},{lat_9999},{lat_max}'
               .format(**locals()), file=raw)
