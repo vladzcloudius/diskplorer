@@ -157,9 +157,8 @@ for tl in ax1.get_yticklabels():
 
 ax2 = ax1.twinx()
 #ax2.plot(concurrencies, latencies, 'r-+')
-ax2.errorbar(concurrencies, latencies, yerr=[latencies_05, latencies_99], color='r')
-ax2.scatter(concurrencies, latencies_95, c='g')
-ax2.set_ylabel(u'average latency (us)\n(green dots 95p, top is 99p)', color='r')
+ax2.errorbar(concurrencies, latencies, yerr=[latencies_05, latencies_95], color='r')
+ax2.set_ylabel(u'average latency (us)\n(top is 95p)', color='r')
 for tl in ax2.get_yticklabels():
     tl.set_color('r')
 
