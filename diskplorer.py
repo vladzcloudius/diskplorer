@@ -29,11 +29,11 @@ optparser.add_option('--buffer-size', dest='buffer_size', default='4k',
                      help='Set SIZE as I/O buffer size for test (ex. 4k, 1M)', metavar='SIZE')
 optparser.add_option('-m', '--max-concurrency', dest='maxdepth', default=128, type='int',
                      help='Test maximum concurrency level N', metavar='N')
-optparser.add_option('-o', '--output', dest='output_filename', default='disk-concurrency-response.svg',
-                     help='Write output graph to FILE', metavar='FILE')
-optparser.add_option('--raw-results', dest='raw_results_filename',
-                     metavar='FILE', default='disk-concurrency-response.csv',
-                     help='Write raw results (.csv) to FILE')
+optparser.add_option('-o', '--output-prefix', dest='output_filename_prefix', default='disk-concurrency-response',
+                     help='Write output graph and csv to FILE prefixed with this', metavar='FILE')
+optparser.add_option('-f','--file', dest='fio_json',
+                     metavar='FILE',
+                     help='Input file with fio results for processing')
 
 (options, args) = optparser.parse_args()
 
@@ -41,10 +41,11 @@ mountpoint = options.mountpoint
 filesize = options.filesize
 maxdepth = options.maxdepth
 buffer_size = options.buffer_size
-output_filename = options.output_filename
-raw_filename = options.raw_results_filename
 test_name = options.test_name
-input_filename = 'fiotest.tmp'
+output_filename = options.output_filename_prefix+"-{buffer_size}-{test_name}.svg".format(buffer_size=buffer_size,test_name=test_name)
+raw_filename = options.output_filename_prefix+"-{buffer_size}-{test_name}.csv".format(buffer_size=buffer_size,test_name=test_name)
+json_filename = options.output_filename_prefix+'-{buffer_size}-{test_name}.fio.json'.format(buffer_size=buffer_size,test_name=test_name)
+fio_input_filename = options.output_filename_prefix+'-fiotest.tmp'
 readonly = []
 stat_label = 'read'
 
@@ -52,7 +53,7 @@ if re.search('write', test_name):
     stat_label = 'write'
 
 if options.device:
-    input_filename = options.device
+    fio_input_filename = options.device
     readonly = ['--readonly']
     mountpoint = '/'
 
@@ -65,7 +66,7 @@ bs={buffer_size}
 size={filesize}
 directory={mountpoint}
 runtime=10s
-filename={input_filename}
+filename={fio_input_filename}
 group_reporting=1
 
 '''
@@ -103,16 +104,24 @@ def run_job():
     create_fio_spec(spec_fname)
     result_json = subprocess.check_output(['fio', '--output-format=json'] + readonly + [spec_fname])
     result_json = result_json.decode('utf-8')
-    open('tmp.fio.json', 'w').write(result_json)
+    open(json_filename, 'w').write(result_json)
     return json.loads(result_json)
 
+results = ""
 
-results = run_job()
+if options.fio_json:
+  with open(options.fio_json,"r") as json_file:
+    results = json.load(json_file)
+else:
+  results = run_job()
 
 concurrencies = [0]  # FIXME: fake 0 element to force axis limit
 latencies = [0.]
 latencies_05 = [0.]
 latencies_95 = [0.]
+latencies_99 = [0.]
+latencies_9999 = [0.]
+latencies_max = [0.]
 iopses = [0.]
 
 for job in results['jobs']:
@@ -120,12 +129,18 @@ for job in results['jobs']:
     latency = float(job[stat_label]['clat_ns']['mean'])
     latency_05 = float(job[stat_label]['clat_ns']['percentile']['5.000000'])
     latency_95 = float(job[stat_label]['clat_ns']['percentile']['95.000000'])
+    latency_99 = float(job[stat_label]['clat_ns']['percentile']['99.000000'])
+    latency_9999 = float(job[stat_label]['clat_ns']['percentile']['99.990000'])
+    latency_max = float(job[stat_label]['clat_ns']['max'])
     latency_stddev = float(job[stat_label]['clat_ns']['stddev'])
     iops = float(job[stat_label]['iops'])
     concurrencies.append(concurrency)
-    latencies.append(latency)
-    latencies_05.append(latency_05)
-    latencies_95.append(latency_95)
+    latencies.append(latency/1000)
+    latencies_05.append(latency_05/1000)
+    latencies_95.append(latency_95/1000)
+    latencies_99.append(latency_99/1000)
+    latencies_9999.append(latency_9999/1000)
+    latencies_max.append(latency_max/1000)
     iopses.append(iops)
 
 def fix_y_axis(plt):
@@ -143,7 +158,7 @@ for tl in ax1.get_yticklabels():
 ax2 = ax1.twinx()
 #ax2.plot(concurrencies, latencies, 'r-+')
 ax2.errorbar(concurrencies, latencies, yerr=[latencies_05, latencies_95], color='r')
-ax2.set_ylabel(u'average latency (ns)', color='r')
+ax2.set_ylabel(u'average latency (us)\n(top is 95p)', color='r')
 for tl in ax2.get_yticklabels():
     tl.set_color('r')
 
@@ -151,8 +166,8 @@ plt.tight_layout()
 plt.savefig(fname=output_filename)
 
 with open(raw_filename, 'w') as raw:
-    print('buffersize,concurrency,iops,lat_avg,lat_05,lat_95', file=raw)
-    for concurrency, iops, lat_avg, lat_05, lat_95 in zip(
-            concurrencies, iopses, latencies, latencies_05, latencies_95):
-        print('{buffer_size},{concurrency},{iops},{lat_avg},{lat_05},{lat_95}'
+    print('buffersize,concurrency,iops,lat_avg(us),lat_05(us),lat_95(us),lat_99(us),lat_9999(us),lat_max(us)', file=raw)
+    for concurrency, iops, lat_avg, lat_05, lat_95, lat_99,lat_9999,lat_max in zip(
+            concurrencies, iopses, latencies, latencies_05, latencies_95, latencies_99, latencies_9999, latencies_max):
+        print('{buffer_size},{concurrency},{iops},{lat_avg},{lat_05},{lat_95},{lat_99},{lat_9999},{lat_max}'
               .format(**locals()), file=raw)
