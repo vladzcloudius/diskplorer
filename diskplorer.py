@@ -34,6 +34,9 @@ optparser.add_option('-o', '--output-prefix', dest='output_filename_prefix', def
 optparser.add_option('-f','--file', dest='fio_json',
                      metavar='FILE',
                      help='Input file with fio results for processing')
+optparser.add_option('--fsync-io', dest='fsync_io', default=0, type='int', metavar='IOP',
+                     help="How many I/Os to perform before issuing an fsync(2) of dirty data. If 0, don't sync. Default: 0.")
+
 
 (options, args) = optparser.parse_args()
 
@@ -48,6 +51,7 @@ json_filename = options.output_filename_prefix+'-{buffer_size}-{test_name}.fio.j
 fio_input_filename = options.output_filename_prefix+'-fiotest.tmp'
 readonly = []
 stat_label = 'read'
+fsync_io = options.fsync_io
 
 if re.search('write', test_name):
     stat_label = 'write'
@@ -68,6 +72,7 @@ directory={mountpoint}
 runtime=10s
 filename={fio_input_filename}
 group_reporting=1
+fsync={fsync_io}
 
 '''
 
